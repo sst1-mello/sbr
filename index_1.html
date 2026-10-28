@@ -1,0 +1,1179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>hey you</title>
+<meta name="theme-color" content="#000000">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=Instrument+Serif:ital@0;1&family=Young+Serif&display=swap" rel="stylesheet">
+<style>
+/* Layout: one black stage. The bouquet is painted on a full-bleed canvas; the greeting floats in the empty sky above it. */
+:root {
+  --bg: #000;
+  --ink: #f6ecd9;
+  --ink-soft: rgba(246, 236, 217, 0.62);
+  --glow: rgba(255, 196, 170, 0.3);
+  --glow-strong: rgba(255, 196, 170, 0.55);
+  --focus: #ffc9b0;
+  --coral: #ffb08f;
+  --font-display: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  --font-ui: "DM Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  overflow: hidden;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: manipulation;
+  filter: brightness(1.62) saturate(1.2) contrast(1.05);
+}
+.greeting {                                         /* the message itself is stitched onto the canvas; this is its text for screen readers */
+  position: fixed;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+#replay {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  padding: 10px 18px;
+  font: 500 12px/1 var(--font-ui);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: transparent;
+  border: 1px solid rgba(246, 236, 217, 0.22);
+  border-radius: 999px;
+  cursor: pointer;
+  animation: fadein 1.6s ease both;
+}
+#replay:hover { color: var(--ink); border-color: rgba(246, 236, 217, 0.5); }
+#replay:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.quiz { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
+.card {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: min(calc(100vw - 32px), 340px);
+  box-sizing: border-box;
+  padding: 22px 20px 12px;
+  color: var(--ink);
+  background: rgba(20, 11, 15, 0.86);
+  border: 2px dashed rgba(246, 236, 217, 0.74);
+  border-radius: 20px;
+  outline: 1.5px dashed rgba(246, 236, 217, 0.26);
+  outline-offset: -10px;
+  box-shadow: 0 0 46px rgba(255, 150, 120, 0.15), 0 14px 40px rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(14px) scale(0.94);
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.2, 0.9, 0.25, 1.2);
+}
+.card:focus { outline: 1.5px dashed rgba(246, 236, 217, 0.26); outline-offset: -10px; }
+.card.in { opacity: 1; transform: none; }
+.card.out { opacity: 0; transform: scale(0.9) translateY(-8px); transition-duration: 0.3s; pointer-events: none; }
+.card.shake { animation: shake 0.45s ease; }
+.card .count {
+  margin-bottom: 12px;
+  font: 500 11px/1 var(--font-ui);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.card .q {
+  margin: 0 0 18px;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 27px;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+.opts { display: flex; gap: 12px; }
+.opts.stack { flex-direction: column; }
+.opt {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1.5px dashed rgba(246, 236, 217, 0.3);
+  border-radius: 14px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.12s ease;
+}
+.opt:hover { border-color: rgba(246, 236, 217, 0.7); background: rgba(246, 236, 217, 0.05); }
+.opt input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+.opt .box {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--ink);
+  border-radius: 8px 10px 7px 9px;
+}
+.opt .box svg { width: 22px; height: 22px; overflow: visible; }
+.opt .box path {
+  fill: none;
+  stroke: var(--coral);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  transition: stroke-dashoffset 0.28s ease;
+}
+.opt input:checked + .box path { stroke-dashoffset: 0; }
+.opt input:focus-visible + .box { outline: 2px solid var(--focus); outline-offset: 3px; }
+.opt .lbl { font: 500 17px/1 var(--font-ui); letter-spacing: 0.04em; }
+.opt .cnt { margin-left: auto; font: 500 13px/1 var(--font-ui); letter-spacing: 0.08em; color: var(--coral); }
+.opt .cnt:empty { display: none; }
+.opt.ticked, .opt.done { border-color: var(--coral); background: rgba(255, 176, 143, 0.1); }
+.opt.ticked { transform: scale(0.97); }
+.opt.ticked .box path, .opt.done .box path { stroke-dashoffset: 0; }
+.opt.gone { opacity: 0; transform: scale(0.6) rotate(-6deg); visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, transform 0.35s ease, visibility 0s linear 0.35s; }
+.opt.dodger { z-index: 3; background: rgba(20, 11, 15, 0.92); transition: transform 0.34s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.2s ease; }
+.card .nudge {
+  min-height: 1.5em;
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 19px;
+  line-height: 1.25;
+  color: var(--coral);
+}
+.card .nudge.pop { animation: pop 0.4s ease; }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-9px); }
+  45% { transform: translateX(8px); }
+  70% { transform: translateX(-5px); }
+}
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .card, .card.out { transition-duration: 0.01s; }
+  .card.shake, .card .nudge.pop { animation: none; }
+  .opt.dodger { transition: none; }
+  .opt, .opt.gone { transition: none; }
+  #replay { animation: none; }
+}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+</head>
+<body>
+<canvas id="stage" role="img" aria-label="A bouquet of tulips in many colours grows from green stems, opens, and gathers into a dome while stars appear behind it. Tap for a shower of sparks."></canvas>
+<div class="quiz" id="quiz"></div>
+<div class="greeting" id="greeting" hidden><p id="msg"></p><div id="from"></div></div>
+<button id="replay" type="button" hidden>Replay</button>
+
+<script>
+(() => {
+'use strict';
+
+/* ───────────── Make it hers: edit these lines ───────────── */
+const CONFIG = {
+  message: 'shine bright like this tulips. you are GORGEOUS !!!',   // stitched above the tulips at the end
+  from: '',             // optional small signature under it, e.g. 'from Sam'
+  speed: 1,             // speed of the bouquet animation: 1 = normal, 0.8 = slower, 1.3 = faster
+  placement: 'center',  // 'center': every question box turns up in the middle of the screen; 'random': anywhere
+  // The questions, in order. Each one has Yes and No boxes.
+  //   must: 'yes' or 'no'  only that answer moves on (leave it out when either answer is fine)
+  //   dodge: true          the wrong answer runs away from her finger (otherwise the box shakes)
+  //   nudge: [...]         lines shown when she picks the wrong one
+  //   reply: '...'         a line shown when she picks the right one, before the next box (the box waits a moment so she can read it)
+  //   options: [...]       replaces Yes / No with your own boxes: { label, taps: 10 } must be tapped that many
+  //                        times to pass, { label, vanish: true } just disappears when tapped
+  questions: [
+    { q: 'Heyyyy, you want a surprize?', must: 'yes', nudge: ['Wrong answer. Try again)'] },
+    { q: 'are you sure??', must: 'yes', nudge: ['wrong answer again. Im thinking you are slow)'] },
+    { q: 'lemme ask you something, do you agree that you are a baby?', must: 'yes', dodge: true, reply: 'ahahaha, thought so' },
+    { q: 'sure, sure?', must: 'yes', dodge: true, nudge: ['no no no'] },
+    { q: 'bettttttt', options: [{ label: 'bettt \u00d710', taps: 10 }, { label: 'bettt', vanish: true }] }
+  ]
+};
+/* ─────────────────────────────────────────────────────────── */
+
+/* A setup made on the maker page rides in the link: #c… plays everything, #p… jumps straight to the bouquet. */
+let linkSkip = false;
+(function fromLink() {
+  const m = /^#([cp])([A-Za-z0-9_-]{6,})$/.exec(location.hash);
+  if (!m) return;
+  try {
+    let b = m[2].replace(/-/g, '+').replace(/_/g, '/');
+    while (b.length % 4) b += '=';
+    const bin = atob(b), bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const d = JSON.parse(new TextDecoder().decode(bytes));
+    const qs = (Array.isArray(d.q) ? d.q : []).slice(0, 30).map(a => {
+      const o = { q: String(a[0] || '').slice(0, 200) };
+      if (a[1] === 1 || a[1] === 2) { o.must = a[1] === 1 ? 'yes' : 'no'; if (a[2]) o.dodge = true; }
+      if (Array.isArray(a[3])) o.nudge = a[3].map(s => String(s).slice(0, 80)).filter(Boolean).slice(0, 8);
+      return o;
+    }).filter(o => o.q);
+    CONFIG.message = String(d.m || '').slice(0, 400);
+    CONFIG.from = String(d.f || '').slice(0, 80);
+    CONFIG.questions = qs;
+    linkSkip = m[1] === 'p';
+  } catch (e) { /* a damaged link falls back to the sample setup above */ }
+})();
+
+const TAU = Math.PI * 2;
+const cvs = document.getElementById('stage');
+const ctx = cvs.getContext('2d');
+const scn = document.createElement('canvas');       // the painted bouquet, one pixel per stitch
+const sc = scn.getContext('2d');
+const starLayer = document.createElement('canvas');
+const stx = starLayer.getContext('2d');
+const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const BASE = { x: 500, y: 1260 };                   // where the stems meet, in scene units (the scene is about 1000 wide)
+const END_T = 7.2;                                  // everything has settled by now
+
+const clamp = (v, a = 0, b = 1) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, t0, d) => clamp((t - t0) / d);
+const smooth = t => t * t * (3 - 2 * t);
+const outCubic = t => 1 - Math.pow(1 - t, 3);
+const outBack = t => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2); };
+const inOutBack = x => {                            // eases both ways with a small overshoot
+  const c2 = 1.0 * 1.525;
+  return x < 0.5
+    ? (Math.pow(2 * x, 2) * ((c2 + 1) * 2 * x - c2)) / 2
+    : (Math.pow(2 * x - 2, 2) * ((c2 + 1) * (x * 2 - 2) + c2) + 2) / 2;
+};
+const spring = x => (x <= 0 ? 0 : x >= 1 ? 1 : 1 - Math.exp(-5.2 * x) * Math.cos(8.2 * x));   // overshoots, then settles
+function mulberry(a) {
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ───────────── colour ───────────── */
+// e = light tip, m = mid, d = deep base (HSL lightness); rim = optional two-tone edge colour
+const PAL = {
+  tulipRed:       { h: 354, s: 86, e: 62, m: 45, d: 23 },
+  tulipMagenta:   { h: 324, s: 88, e: 70, m: 54, d: 32 },
+  tulipPink:      { h: 336, s: 82, e: 78, m: 61, d: 40, rim: { h: 340, s: 70, l: 92 } },
+  tulipPeach:     { h: 22,  s: 90, e: 84, m: 70, d: 50 },
+  tulipCoral:     { h: 11,  s: 92, e: 68, m: 55, d: 36 },
+  tulipYellow:    { h: 47,  s: 96, e: 72, m: 56, d: 38 },
+  tulipCream:     { h: 40,  s: 62, e: 95, m: 84, d: 62 },
+  tulipViolet:    { h: 280, s: 62, e: 72, m: 54, d: 32, rim: { h: 300, s: 60, l: 84 } },
+  tulipMaroon:    { h: 344, s: 78, e: 46, m: 31, d: 16 },
+  tulipFlame:     { h: 355, s: 88, e: 58, m: 44, d: 24, rim: { h: 46, s: 96, l: 60 } },
+  tulipBlush:     { h: 42,  s: 50, e: 96, m: 88, d: 70, rim: { h: 340, s: 80, l: 68 } },
+  tulipYellowRed: { h: 48,  s: 96, e: 72, m: 57, d: 42, rim: { h: 6,  s: 90, l: 52 } }
+};
+let SHADE = 1;                                       // darkens flowers sitting further back
+const col = (p, L, o) => {
+  const a = o && o.a !== undefined ? o.a : 1;
+  const s = o && o.s !== undefined ? o.s : p.s;
+  return 'hsla(' + p.h + ',' + s + '%,' + clamp(L * SHADE, 0, 100) + '%,' + a + ')';
+};
+const rimCol = (p, a) => 'hsla(' + p.rim.h + ',' + p.rim.s + '%,' + clamp(p.rim.l * SHADE, 0, 100) + '%,' + a + ')';
+const green = (h, s, l, a = 1) => 'hsla(' + h + ',' + s + '%,' + l + '%,' + a + ')';
+
+/* ───────────── the bouquet ───────────── */
+// head centre x, y, size, lean (deg), palette, depth (0 = back, 1 = front), how far it opens (0-1)
+const FLOWERS = [
+  [500, 405,  80,   0, 'tulipCream',     0.30, 0.45],
+  [366, 470,  78, -15, 'tulipPink',      0.30, 0.55],
+  [640, 462,  80,  14, 'tulipYellow',    0.30, 0.50],
+  [236, 610,  82, -28, 'tulipCoral',     0.45, 0.70],
+  [768, 612,  82,  28, 'tulipPeach',     0.45, 0.70],
+  [436, 578,  92,  -8, 'tulipFlame',     0.70, 0.95],
+  [572, 604,  88,   7, 'tulipBlush',     0.75, 0.75],
+  [212, 768,  84, -36, 'tulipViolet',    0.55, 0.65],
+  [790, 772,  84,  36, 'tulipRed',       0.50, 0.60],
+  [350, 752,  94, -14, 'tulipMagenta',   0.85, 0.85],
+  [654, 770,  92,  12, 'tulipYellowRed', 0.85, 0.80],
+  [504, 730,  80,   0, 'tulipMaroon',    0.60, 0.50],
+  [300, 912,  86, -27, 'tulipPeach',     0.95, 0.65],
+  [500, 892,  98,   0, 'tulipCoral',     1.00, 0.95],
+  [706, 914,  86,  25, 'tulipBlush',     0.95, 0.65]
+];
+
+let flowers = [], baseLeaves = [], glints = [];
+
+function build() {
+  const R = mulberry(23);
+  const cx0 = 500, cy0 = 700;
+  let maxD = 1;
+  FLOWERS.forEach(f => { maxD = Math.max(maxD, Math.hypot(f[0] - cx0, f[1] - cy0)); });
+  flowers = FLOWERS.map((f, i) => {
+    const [cx, cy, r, rotDeg, pal, depth, open] = f;
+    const rot = rotDeg * Math.PI / 180;
+    const o = {
+      cx, cy, r, rot, open, pal: PAL[pal], depth,
+      shade: 0.6 + 0.4 * depth,
+      px: cx - r * Math.sin(rot), py: cy + r * Math.cos(rot),   // where the head sits on its stem when it is done
+      bx: BASE.x + (R() - 0.5) * 70, by: BASE.y + R() * 8,
+      sx: 0, sy: 0,
+      seed: R() * TAU,
+      t0: 0.12 + R() * 0.5, dur: 0.9 + R() * 0.45,
+      tb: 2.0 + 0.95 * (Math.hypot(cx - cx0, cy - cy0) / maxD) + R() * 0.1,     // blooms ripple out from the middle
+      tc: 2.05 + R() * 0.3,
+      leaves: [], pollen: []
+    };
+    o.sx = BASE.x + (o.px - BASE.x) * 0.6 + (R() - 0.5) * 50;
+    o.sy = 195 + (cy - 380) * 0.55 + (R() - 0.5) * 90;
+    const side = R() < 0.5 ? -1 : 1;
+    o.leaves.push({ u: 0.14 + R() * 0.14, side, L: 140 + R() * 70, w: 26 + R() * 8, ang: 0.2 + R() * 0.25 });
+    for (let k = 0; k < 16; k++) {
+      o.pollen.push({
+        fan: (R() - 0.5) * 2.3, sp: 70 + R() * 170, size: 4.5 + R() * 4, life: 1.3 + R() * 1.0,
+        delay: R() * 0.3, kind: (R() * 3) | 0
+      });
+    }
+    return o;
+  });
+  // long, broad, blue-green leaves arching out from the base
+  baseLeaves = [];
+  const NL = 11;
+  for (let i = 0; i < NL; i++) {
+    const k = i / (NL - 1);
+    const edge = Math.abs(k - 0.5) * 2;               // 0 in the middle, 1 at the sides
+    baseLeaves.push({
+      x: BASE.x + (R() - 0.5) * 80, y: BASE.y - 6 + R() * 18,
+      ang: -Math.PI + 0.22 + k * (Math.PI - 0.44) + (R() - 0.5) * 0.14,
+      L: 165 + R() * 60 + edge * 70, w: 36 + R() * 10, t0: 0.4 + i * 0.05 + R() * 0.15, bend: 0.2 + R() * 0.16
+    });
+  }
+  glints = [];
+  for (let i = 0; i < 42; i++) {
+    glints.push({ fx: R(), fy: R(), T: 6 + R() * 5, ph: R() * 20, s: 3 + R() * 4.5, warm: R() < 0.5 });
+  }
+}
+
+/* ───────────── tulip ───────────── */
+function drawTulip(c, R, o, p) {
+  // origin = bottom of the cup, the cup rises towards -y. o: 0 = closed bud, 1 = fully open.
+  const H = 2.0 * R;
+  const mk = (L, wd, tipX) => {
+    const b = wd * 0.45;
+    c.beginPath();
+    c.moveTo(-b, -L * 0.03);
+    c.bezierCurveTo(-wd * 1.55, -L * 0.14, -wd * 1.35 + tipX * 0.3, -L * 0.66, -wd * 0.1 + tipX, -L);
+    c.quadraticCurveTo(tipX, -L * 1.05, wd * 0.1 + tipX, -L);
+    c.bezierCurveTo(wd * 1.35 + tipX * 0.3, -L * 0.66, wd * 1.55, -L * 0.14, b, -L * 0.03);
+    c.quadraticCurveTo(0, L * 0.12, -b, -L * 0.03);
+    c.closePath();
+  };
+  const paint = (L, wd, tipX, shade) => {
+    mk(L, wd, tipX);
+    const g = c.createLinearGradient(0, 0, 0, -L);
+    g.addColorStop(0, col(p, p.d * 0.7 * shade));
+    g.addColorStop(0.25, col(p, p.d * shade));
+    g.addColorStop(0.65, col(p, p.m * shade));
+    g.addColorStop(1, col(p, p.e * shade));
+    c.fillStyle = g; c.fill();
+    if (p.rim) {                                     // two-tone edge: clip to the petal, stroke its outline
+      c.save(); c.clip();
+      c.strokeStyle = rimCol(p, 0.9); c.lineWidth = R * 0.24; c.lineJoin = 'round'; c.stroke();
+      c.restore();
+    }
+    c.lineWidth = Math.max(1.5, R * 0.017); c.lineJoin = 'round';
+    c.strokeStyle = col(p, p.d * 0.5, { a: 0.7, s: p.s * 0.85 }); c.stroke();
+  };
+  const open = o;
+
+  for (const sd of [-1, 1]) {                        // back petals, darker, swing wide when open
+    c.save();
+    c.rotate(sd * (0.05 + 0.46 * open));
+    paint(H * 0.98, R * 0.46, sd * open * R * 0.15, 0.78);
+    c.restore();
+  }
+  if (open > 0.2) {                                  // inside of the cup, with stamens
+    const k = clamp((open - 0.2) / 0.5);
+    const ex = R * (0.1 + 0.46 * open), ey = ex * 0.5, cy = -H * 0.8;
+    const g = c.createRadialGradient(0, cy, 0, 0, cy, ex);
+    g.addColorStop(0, 'hsla(' + p.h + ',55%,' + clamp(6 * SHADE, 0, 100) + '%,' + k + ')');
+    g.addColorStop(1, col(p, p.d * 0.65, { a: k }));
+    c.beginPath(); c.ellipse(0, cy, ex, ey, 0, 0, TAU); c.fillStyle = g; c.fill();
+    for (let i = 0; i < 6; i++) {
+      const a = (i - 2.5) * 0.24;
+      const len = R * (0.5 + 0.2 * (i % 2)) * open;
+      const x1 = Math.sin(a) * len, y1 = -H * 0.66 - Math.cos(a) * len * 0.8;
+      c.beginPath(); c.moveTo(0, -H * 0.66); c.lineTo(x1, y1);
+      c.strokeStyle = 'hsla(50,70%,' + clamp(68 * SHADE, 0, 100) + '%,' + k + ')'; c.lineWidth = Math.max(1.4, R * 0.014); c.lineCap = 'round'; c.stroke();
+      c.beginPath(); c.ellipse(x1, y1, Math.max(2, R * 0.04), Math.max(2.6, R * 0.065), a, 0, TAU);
+      c.fillStyle = 'hsla(265,35%,' + clamp(15 * SHADE, 0, 100) + '%,' + k + ')'; c.fill();
+    }
+  }
+  for (const sd of [-1, 1]) {                        // middle petals
+    c.save();
+    c.translate(sd * R * 0.1, 0);
+    c.rotate(sd * (0.03 + 0.24 * open));
+    c.scale(1, 1 - 0.1 * open);
+    paint(H, R * 0.5, sd * open * R * 0.08, 0.92);
+    c.restore();
+  }
+  c.save();                                          // front petal, a touch shorter when open so you can see inside
+  const L = H * 1.02;
+  c.scale(1 + 0.04 * open, 1 - 0.26 * open);         // leans forward when open, so you look down into the cup
+  paint(L, R * 0.58, 0, 1.0);
+  c.beginPath(); c.moveTo(0, -L * 0.14); c.lineTo(0, -L * 0.8);
+  c.strokeStyle = p.rim ? rimCol(p, 0.35) : col(p, Math.min(99, p.e + 10), { a: 0.38 });
+  c.lineWidth = Math.max(2, R * 0.055); c.lineCap = 'round'; c.stroke();
+  c.strokeStyle = col(p, p.d * 0.8, { a: 0.32 }); c.lineWidth = Math.max(1.2, R * 0.013);
+  for (const sd of [-1, 1]) {
+    c.beginPath(); c.moveTo(sd * R * 0.1, -L * 0.1); c.quadraticCurveTo(sd * R * 0.42, -L * 0.4, sd * R * 0.2, -L * 0.82); c.stroke();
+  }
+  c.restore();
+}
+
+function cupPetal(c, L, w) {
+  c.beginPath();
+  c.moveTo(0, 0);
+  c.bezierCurveTo(-w * 1.35, -L * 0.12, -w * 1.35, -L * 0.62, -w * 0.2, -L * 0.96);
+  c.quadraticCurveTo(0, -L * 1.03, w * 0.2, -L * 0.96);
+  c.bezierCurveTo(w * 1.35, -L * 0.62, w * 1.35, -L * 0.12, 0, 0);
+  c.closePath();
+}
+
+/* ───────────── leaves ───────────── */
+function leafShape(L, w, bend, s) {
+  const N = 16, top = [], bot = [], mid = [];
+  for (let k = 0; k <= N; k++) {
+    const u = k / N;
+    const cx = L * u, cy = s * bend * L * u * u;
+    const dx = L, dy = s * 2 * bend * L * u;
+    const len = Math.hypot(dx, dy);
+    const nx = -dy / len, ny = dx / len;
+    const hw = w * Math.sin(Math.PI * Math.pow(u, 0.7)) * (1 - 0.12 * u);
+    top.push([cx + nx * hw, cy + ny * hw]);
+    bot.push([cx - nx * hw, cy - ny * hw]);
+    mid.push([cx, cy]);
+  }
+  return { top, bot, mid };
+}
+function drawLeaf(c, x, y, ang, L, w, bend, g) {
+  if (g <= 0.02) return;
+  const s = Math.cos(ang) >= 0 ? 1 : -1;
+  const Lc = L * g;
+  const { top, bot, mid } = leafShape(Lc, w * (0.45 + 0.55 * g), bend, s);
+  c.save();
+  c.translate(x, y); c.rotate(ang);
+  const poly = (a, b) => {
+    c.beginPath(); c.moveTo(a[0][0], a[0][1]);
+    for (let i = 1; i < a.length; i++) c.lineTo(a[i][0], a[i][1]);
+    for (let i = b.length - 1; i >= 0; i--) c.lineTo(b[i][0], b[i][1]);
+    c.closePath();
+  };
+  const lit = s > 0 ? top : bot, shade = s > 0 ? bot : top;
+  const g1 = c.createLinearGradient(0, 0, Lc, 0);
+  g1.addColorStop(0, green(150, 44, 16)); g1.addColorStop(0.5, green(140, 42, 34)); g1.addColorStop(1, green(125, 48, 47));
+  poly(mid, lit); c.fillStyle = g1; c.fill();
+  const g2 = c.createLinearGradient(0, 0, Lc, 0);
+  g2.addColorStop(0, green(155, 42, 10)); g2.addColorStop(0.5, green(146, 40, 22)); g2.addColorStop(1, green(135, 42, 31));
+  poly(mid, shade); c.fillStyle = g2; c.fill();
+  c.beginPath(); c.moveTo(mid[0][0], mid[0][1]);
+  for (let i = 1; i < mid.length; i++) c.lineTo(mid[i][0], mid[i][1]);
+  c.strokeStyle = green(115, 45, 78, 0.7); c.lineWidth = 2.8; c.lineCap = 'round'; c.stroke();
+  c.beginPath(); c.moveTo(lit[0][0], lit[0][1]);
+  for (let i = 1; i < lit.length; i++) c.lineTo(lit[i][0], lit[i][1]);
+  c.strokeStyle = green(130, 50, 72, 0.5); c.lineWidth = 2; c.stroke();
+  c.restore();
+}
+
+/* ───────────── stems and heads ───────────── */
+function stemPt(f, P, u, t) {
+  const dy = f.by - P.y;
+  const x1 = f.bx, y1 = f.by - dy * 0.45, x2 = P.x, y2 = P.y + dy * 0.35;
+  const v = 1 - u, a = v * v * v, b = 3 * v * v * u, cc = 3 * v * u * u, d = u * u * u;
+  const A1 = 1 - smooth(prog(t, 1.4, 1.8));          // stems waver as they climb
+  const A2 = reduce ? 0 : smooth(prog(t, 3.8, 2));    // and breathe gently afterwards
+  const w = Math.sin(u * 5.5 + f.seed + t * 3.6) * 9 * A1 + Math.sin(u * 3 + f.seed * 1.7 + t * 0.9) * 4 * A2;
+  return [a * f.bx + b * x1 + cc * x2 + d * P.x + w * u, a * f.by + b * y1 + cc * y2 + d * P.y];
+}
+function drawStem(c, f, P, g, t) {
+  if (g <= 0.001) return;
+  const n = Math.max(3, Math.ceil(40 * g));
+  c.beginPath();
+  let tip = null;
+  for (let k = 0; k <= n; k++) {
+    const p = stemPt(f, P, g * k / n, t);
+    tip = p;
+    if (k === 0) c.moveTo(p[0], p[1]); else c.lineTo(p[0], p[1]);
+  }
+  const gr = c.createLinearGradient(0, f.by, 0, Math.min(P.y, f.by - 40));
+  gr.addColorStop(0, green(150, 42, 17)); gr.addColorStop(1, green(118, 52, 42));
+  c.lineCap = 'round'; c.lineJoin = 'round';
+  c.strokeStyle = gr; c.lineWidth = 10; c.stroke();
+  c.strokeStyle = green(110, 58, 64, 0.8); c.lineWidth = 3.4; c.stroke();
+  if (g < 0.99 && tip) {                             // a bright spark rides the growing tip
+    const a = clamp((1 - g) * 2.4 + 0.15);
+    c.beginPath(); c.arc(tip[0], tip[1], 17, 0, TAU); c.fillStyle = 'hsla(85,95%,75%,' + (0.22 * a) + ')'; c.fill();
+    c.beginPath(); c.arc(tip[0], tip[1], 6.5, 0, TAU); c.fillStyle = 'hsla(80,100%,90%,' + a + ')'; c.fill();
+  }
+}
+
+function headState(f, i, t, idle) {
+  const cc = inOutBack(prog(t, f.tc, 1.9));          // the stems pull in and the bouquet gathers
+  const P = {
+    x: lerp(f.sx, f.px, cc) + Math.sin(t * 0.9 + i * 1.7) * idle * 3,
+    y: lerp(f.sy, f.py, cc) + Math.cos(t * 0.8 + i * 1.3) * idle * 2
+  };
+  const g = outCubic(prog(t, f.t0, f.dur));
+  const born = outBack(prog(t, f.t0 + f.dur * 0.88, 0.55));
+  const bx = prog(t, f.tb, 1.5);
+  const b = smooth(bx);
+  const sp = spring(Math.pow(bx, 1.15));             // opens past its limit, then settles back
+  const base = stemPt(f, P, 1, t);
+  const p0 = stemPt(f, P, 0.96, t);
+  const tang = Math.atan2(base[0] - p0[0], -(base[1] - p0[1])) * 0.9;
+  const size = f.r * (0.4 + 0.6 * lerp(b, sp, 0.5)) * Math.max(0, born);
+  const rot = lerp(tang, f.rot + Math.sin(t * 1.1 + i) * 0.035 * idle, smooth(clamp(b * 1.5)));
+  return { P, g, born, b, o: sp * f.open, base, size, rot };
+}
+
+function drawHead(c, f, s) {
+  SHADE = f.shade;
+  c.save();
+  c.translate(s.base[0], s.base[1]);
+  c.rotate(s.rot);
+  drawTulip(c, s.size, s.o, f.pal);
+  c.restore();
+  SHADE = 1;
+}
+
+/* ───────────── extras ───────────── */
+function drawRipple(c, t) {                          // a ring of light spreads over the ground as the stems start
+  for (const [t0, mx] of [[0.04, 360], [0.3, 240]]) {
+    const x = prog(t, t0, 1.4);
+    if (x <= 0 || x >= 1) continue;
+    const r = lerp(10, mx, outCubic(x));
+    c.beginPath(); c.ellipse(BASE.x, BASE.y + 10, r, r * 0.24, 0, 0, TAU);
+    c.strokeStyle = 'hsla(48,95%,84%,' + (Math.pow(1 - x, 1.6) * 0.9) + ')'; c.lineWidth = 6 * (1 - x * 0.6); c.stroke();
+  }
+  const d = 1 - prog(t, 0.1, 0.7);
+  if (d > 0) {
+    c.beginPath(); c.arc(BASE.x, BASE.y, 8 + 22 * (1 - d), 0, TAU); c.fillStyle = 'hsla(50,100%,88%,' + d + ')'; c.fill();
+  }
+}
+
+function drawPollen(c, f, s, t) {                    // a puff of golden dust when each tulip opens
+  const tE = f.tb + 0.8;
+  if (t < tE || t > tE + 3.2) return;
+  const age0 = t - tE;
+  const ox = s.base[0] + Math.sin(s.rot) * s.size * 1.5, oy = s.base[1] - Math.cos(s.rot) * s.size * 1.5;
+  for (const p of f.pollen) {
+    const a = age0 - p.delay;
+    if (a <= 0 || a >= p.life) continue;
+    const fr = a / p.life;
+    const e = (1 - Math.exp(-2.2 * a)) / 2.2;
+    const dx = Math.sin(s.rot + p.fan), dy = -Math.cos(s.rot + p.fan);
+    const x = ox + dx * p.sp * e, y = oy + dy * p.sp * e + 38 * a * a;
+    c.globalAlpha = Math.pow(1 - fr, 1.3);
+    c.fillStyle = p.kind === 0 ? 'hsl(46,100%,72%)' : p.kind === 1 ? 'hsl(40,85%,92%)' : 'hsl(16,100%,78%)';
+    c.beginPath(); c.arc(x, y, Math.max(0.5, p.size * (1 - 0.5 * fr)), 0, TAU); c.fill();
+  }
+  c.globalAlpha = 1;
+}
+
+function drawFallingPetals(c, t) {                   // petals come away one at a time and drift down
+  for (let k = 0; k < 10; k++) {
+    const T0 = 5.0 + k * 0.9, life = 9 + (k % 4) * 1.3;
+    if (t < T0) continue;
+    const age0 = t - T0, cyc = Math.floor(age0 / life), a = age0 - cyc * life;
+    const R = mulberry(k * 977 + cyc * 131 + 7);
+    const f = flowers[(R() * flowers.length) | 0];
+    const x0 = f.cx + (R() - 0.5) * 110, y0 = f.cy - f.r * 0.2 + R() * 50;
+    const drift = (R() - 0.5) * 30, vy = 34 + R() * 22, ph = R() * TAU;
+    const x = x0 + Math.sin(a * 1.15 + ph) * 30 + a * drift;
+    const y = y0 + a * vy + a * a * 1.8;
+    const alpha = clamp(a / 0.5) * clamp((life - a) / 1.6);
+    const flip = 0.25 + Math.abs(Math.cos(a * 2.1 + ph)) * 0.75;
+    const p = f.pal;
+    c.save();
+    c.translate(x, y); c.rotate(ph + a * 1.1 + Math.sin(a * 1.9) * 0.5); c.scale(flip, 1);
+    cupPetal(c, 46, 19);
+    const g = c.createLinearGradient(0, 0, 0, -46);
+    g.addColorStop(0, col(p, p.d)); g.addColorStop(1, col(p, p.e));
+    c.globalAlpha = alpha * 0.95; c.fillStyle = g; c.fill();
+    c.restore();
+  }
+  c.globalAlpha = 1;
+}
+
+/* ───────────── frame ───────────── */
+let devW = 0, devH = 0, dprUsed = 1, S = 1, ox = 0, oy = 0, cw = 3, ch = 2;
+let maskPat = null, noisePat = null, stars = [], sparks = [];
+let kickT = -99;
+const gStart = performance.now() / 1000;
+
+function draw(t, g = gnow()) {
+  const idle = reduce ? 0 : smooth(prog(t, 3.8, 2));
+  const ka = t - kickT;
+  const kick = ka > 0 && ka < 5 ? Math.exp(-ka * 2) * 0.03 * Math.sin(ka * 10) : 0;     // a tap makes the bouquet wobble
+  sc.setTransform(1, 0, 0, 1, 0, 0);
+  sc.clearRect(0, 0, scn.width, scn.height);
+  sc.setTransform(S / cw, 0, 0, S / ch, ox / cw, oy / ch);
+  sc.save();
+  const z = lerp(1.2, 1, outCubic(prog(t, 0, 4.8)));  // the camera pulls back as it grows
+  sc.translate(500, 1150); sc.scale(z, z); sc.translate(-500, -1150);
+  sc.translate(BASE.x, BASE.y); sc.rotate(0.011 * Math.sin(t * 0.85) * idle + kick); sc.translate(-BASE.x, -BASE.y);
+
+  drawRipple(sc, t);
+  const st = flowers.map((f, i) => headState(f, i, t, idle));
+  st.forEach((s, i) => drawStem(sc, flowers[i], s.P, s.g, t));
+  st.forEach((s, i) => {
+    const f = flowers[i];
+    f.leaves.forEach(lf => {
+      const gl = outCubic(clamp((s.g - lf.u) / 0.25));
+      if (gl <= 0) return;
+      const p = stemPt(f, s.P, lf.u, t), q = stemPt(f, s.P, Math.min(1, lf.u + 0.02), t);
+      drawLeaf(sc, p[0], p[1], Math.atan2(q[1] - p[1], q[0] - p[0]) + lf.side * lf.ang, lf.L, lf.w, 0.12, gl);
+    });
+  });
+  baseLeaves.forEach(l => {
+    const gg = outCubic(prog(t, l.t0, 1.5));
+    const a0 = -Math.PI / 2 + (l.ang + Math.PI / 2) * 0.25;
+    drawLeaf(sc, l.x, l.y, lerp(a0, l.ang, gg), l.L, l.w, l.bend, gg);
+  });
+  st.map((s, i) => ({ s, i })).sort((a, b) => flowers[a.i].depth - flowers[b.i].depth).forEach(({ s, i }) => {
+    if (s.born > 0.01) drawHead(sc, flowers[i], s);
+  });
+  st.forEach((s, i) => { if (s.born > 0.01) drawPollen(sc, flowers[i], s, t); });
+  drawFallingPetals(sc, t);
+  sc.restore();
+  drawMessage(t);
+
+  compose(t, g, true);
+}
+
+function compose(t, g, withScene) {
+  const dw = scn.width * cw, dh = scn.height * ch;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, devW, devH);
+
+  if (withScene) {
+    const ga = smooth(prog(t, 2.6, 2.6)) * (0.88 + 0.12 * Math.sin(t * 0.8)) * 0.24;   // a warm glow grows behind the dome
+    if (ga > 0.004) {
+      const gx = ox + 500 * S, gy = oy + 700 * S, gr = 560 * S;
+      const gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, gr);
+      gg.addColorStop(0, 'rgba(255,105,125,' + ga + ')');
+      gg.addColorStop(0.55, 'rgba(255,150,95,' + ga * 0.35 + ')');
+      gg.addColorStop(1, 'rgba(255,150,95,0)');
+      ctx.fillStyle = gg; ctx.fillRect(0, 0, devW, devH);
+    }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(scn, 0, 0, dw, dh);
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = maskPat; ctx.fillRect(0, 0, dw, dh);
+    ctx.fillStyle = noisePat; ctx.fillRect(0, 0, dw, dh);
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  const sa = smooth(clamp((g - gStart) / 1.4));       // the sky fades in once, then stays
+  stx.setTransform(1, 0, 0, 1, 0, 0);
+  stx.globalCompositeOperation = 'source-over';
+  stx.clearRect(0, 0, devW, devH);
+  const sz = Math.max(1, Math.round(devW / 520));
+  for (const s of stars) {
+    const tw = reduce ? 0.8 : 0.45 + 0.55 * Math.sin(g * s.f + s.p);
+    stx.globalAlpha = sa * s.a * clamp(tw, 0.1, 1);
+    stx.fillStyle = s.warm ? '#ffe6c8' : '#ffffff';
+    const z = s.big ? sz * 2 : sz;
+    stx.fillRect(s.x, s.y, z, z);
+  }
+  stx.globalAlpha = 1;
+  if (withScene) {
+    stx.globalCompositeOperation = 'destination-out';
+    stx.imageSmoothingEnabled = false;
+    stx.drawImage(scn, 0, 0, dw, dh);               // flowers hide the stars behind them
+  }
+  ctx.drawImage(starLayer, 0, 0);
+
+  // shining dots that drift up, and the sparks from a tap, glow over everything
+  const lw = Math.max(1, dprUsed * 0.9);
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.lineCap = 'round';
+  for (const gl of glints) {
+    const age = (g + gl.ph) % gl.T, fr = age / gl.T;
+    const tw = reduce ? 0.8 : 0.55 + 0.45 * Math.sin(g * 5 + gl.ph * 3);
+    const a = Math.pow(Math.sin(Math.PI * fr), 1.4) * tw * sa;
+    if (a < 0.03) continue;
+    const x = gl.fx * devW + Math.sin(age * 0.8 + gl.ph) * 14 * S;
+    const y = (((gl.fy * devH - age * 16 * S) % devH) + devH) % devH;
+    const L = gl.s * S * (0.5 + 0.5 * tw);
+    ctx.strokeStyle = gl.warm ? 'rgba(255,226,170,' + a + ')' : 'rgba(255,214,222,' + a + ')';
+    ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x - L, y); ctx.lineTo(x + L, y); ctx.moveTo(x, y - L * 1.3); ctx.lineTo(x, y + L * 1.3); ctx.stroke();
+  }
+  if (withScene && msgReady) {
+    const ha = smooth(prog(t - 4.6, 0, 2.5)) * (0.5 + 0.18 * Math.sin(t * 1.3));
+    if (ha > 0.01) { ctx.globalAlpha = ha; ctx.drawImage(haloCv, 0, haloY); ctx.globalAlpha = 1; }
+  }
+  if (sparks.length) {
+    const alive = [];
+    for (const p of sparks) {
+      const a = g - p.t0;
+      if (a > p.life) continue;
+      alive.push(p);
+      const fr = a / p.life;
+      const x = p.x + p.vx * a, y = p.y + p.vy * a + 260 * dprUsed * a * a;
+      ctx.fillStyle = 'hsla(' + p.hue + ',100%,78%,' + Math.pow(1 - fr, 1.4) + ')';
+      const r = Math.max(1, p.r * (1 - 0.6 * fr));
+      ctx.beginPath(); ctx.arc(x, y, r, 0, TAU); ctx.fill();
+    }
+    sparks = alive;
+  }
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/* ───────────── stitch texture ───────────── */
+function makeMask() {
+  const m = document.createElement('canvas');
+  m.width = cw; m.height = ch * 2;
+  const x = m.getContext('2d');
+  const id = x.createImageData(cw, ch * 2);
+  for (let row = 0; row < 2; row++) {
+    const sh = row ? Math.floor(cw / 2) : 0;           // every other row is shifted, like stitches
+    for (let y = 0; y < ch; y++) {
+      for (let xx = 0; xx < cw; xx++) {
+        const xs = (xx - sh + cw) % cw;
+        let v = 1;
+        if (xs === cw - 1) v *= 0.38;
+        if (y === ch - 1 && ch > 1) v *= 0.4;
+        const i = ((row * ch + y) * cw + xx) * 4;
+        id.data[i] = id.data[i + 1] = id.data[i + 2] = Math.round(255 * v);
+        id.data[i + 3] = 255;
+      }
+    }
+  }
+  x.putImageData(id, 0, 0);
+  return ctx.createPattern(m, 'repeat');
+}
+function makeNoise() {
+  const cols = 48, rows = 64;
+  const n = document.createElement('canvas');
+  n.width = cols * cw; n.height = rows * ch;
+  const x = n.getContext('2d');
+  const R = mulberry(99);
+  const rowF = [];
+  for (let r = 0; r < rows; r++) rowF.push(0.8 + 0.2 * R());
+  for (let r = 0; r < rows; r++) {
+    for (let k = 0; k < cols; k++) {
+      const v = Math.round(255 * clamp((0.62 + 0.38 * R()) * rowF[r]));
+      x.fillStyle = 'rgb(' + v + ',' + v + ',' + v + ')';
+      x.fillRect(k * cw, r * ch, cw, ch);
+    }
+  }
+  return ctx.createPattern(n, 'repeat');
+}
+
+function resize() {
+  const w = window.innerWidth, h = window.innerHeight;
+  dprUsed = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2.3e6 / (w * h)));   // keep big screens light
+  devW = Math.max(2, Math.round(w * dprUsed));
+  devH = Math.max(2, Math.round(h * dprUsed));
+  cvs.width = devW; cvs.height = devH;
+  starLayer.width = devW; starLayer.height = devH;
+  S = Math.min(devH * 0.8 / 1080, devW * 0.92 / 820);
+  ox = devW / 2 - BASE.x * S;
+  const baseDev = Math.min(devH * 0.945, devH * 0.57 + 0.5 * 930 * S);   // sit the bouquet a little below centre on tall screens
+  oy = baseDev - BASE.y * S;
+  cw = Math.max(3, Math.round(S * 4.6));
+  ch = Math.max(2, Math.round(cw * 0.62));
+  scn.width = Math.ceil(devW / cw);
+  scn.height = Math.ceil(devH / ch);
+  maskPat = makeMask();
+  noisePat = makeNoise();
+  const R = mulberry(5);
+  stars = [];
+  const count = Math.round(clamp(devW * devH / 9000, 90, 260));
+  for (let i = 0; i < count; i++) {
+    stars.push({ x: Math.floor(R() * devW), y: Math.floor(R() * devH), a: 0.35 + 0.65 * R(), f: 0.8 + R() * 2.4, p: R() * TAU, warm: R() < 0.3, big: R() < 0.05 });
+  }
+  layoutText();
+}
+
+/* ───────────── the message, stitched like the tulips ───────────── */
+const greeting = document.getElementById('greeting');
+const msg = document.getElementById('msg');
+const fromEl = document.getElementById('from');
+const replay = document.getElementById('replay');
+const quizEl = document.getElementById('quiz');
+const gnow = () => performance.now() / 1000;
+msg.textContent = CONFIG.message || '';
+fromEl.textContent = CONFIG.from || '';
+
+const TEXT_FONT = '"Young Serif", "Instrument Serif", Georgia, "Times New Roman", serif';
+const msgCv = document.createElement('canvas');     // the finished message, one pixel per stitch
+const haloCv = document.createElement('canvas');    // a soft glow behind it, at screen size
+const meas = document.createElement('canvas').getContext('2d');
+let msgChars = [], msgStep = 0.04, msgReady = false, haloY = 0;
+
+function wrapText(words, px, width) {
+  meas.font = px + 'px ' + TEXT_FONT;
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const t = cur ? cur + ' ' + w : w;
+    if (cur && meas.measureText(t).width > width) { lines.push(cur); cur = w; } else cur = t;
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+const lineW = (l, px) => { meas.font = px + 'px ' + TEXT_FONT; return meas.measureText(l).width; };
+
+function layoutText() {                              // the biggest message that still fits in the sky above the tulips
+  msgReady = false;
+  const text = (CONFIG.message || '').replace(/\s+/g, ' ').trim();
+  const W = scn.width, H = scn.height;
+  if (!text || !W) return;
+  const words = text.split(' ');
+  const ins = insets();
+  const maxW = devW - 2 * 20 * dprUsed;
+  const top = (ins.t + clamp(window.innerHeight * 0.055, 24, 72)) * dprUsed;
+  const avail = Math.max(60 * dprUsed, oy + 300 * S - 12 * dprUsed - top);
+  const LH = 1.2;
+  const from = (CONFIG.from || '').trim();
+  const fromPx = px => Math.max(18 * dprUsed, 11 * ch, px * 0.42);      // never thinner than about 8 stitch rows, or it stops being legible
+  const measure = px => {
+    const lines = wrapText(words, px, maxW);
+    return { lines, tooWide: lines.some(l => lineW(l, px) > maxW + 0.5), h: lines.length * px * LH + (from ? px * 0.35 + fromPx(px) * LH : 0) };
+  };
+  let lo = Math.max(20 * dprUsed, 14 * ch), hi = 88 * dprUsed;
+  for (let i = 0; i < 9; i++) {
+    const mid = (lo + hi) / 2, r = measure(mid);
+    if (!r.tooWide && r.h <= avail) lo = mid; else hi = mid;
+  }
+  const px = lo, n = measure(px).lines.length;
+  let wlo = Math.max.apply(null, words.map(w => lineW(w, px))), whi = maxW;      // even out the lines, like text-wrap: balance
+  for (let i = 0; i < 8; i++) {
+    const mid = (wlo + whi) / 2;
+    if (wrapText(words, px, mid).length <= n) whi = mid; else wlo = mid;
+  }
+  const lines = wrapText(words, px, whi);
+  const lh = px * LH;
+
+  msgCv.width = W; msgCv.height = H;
+  const g = msgCv.getContext('2d');
+  g.setTransform(1 / cw, 0, 0, 1 / ch, 0, 0);       // draw in screen pixels; each stitch is one pixel of this canvas
+  g.textBaseline = 'top'; g.textAlign = 'left';
+  msgChars = [];
+  const put = (line, y, size, color) => {
+    g.font = size + 'px ' + TEXT_FONT; g.fillStyle = color;
+    const w = g.measureText(line).width, x0 = (devW - w) / 2;
+    g.fillText(line, x0, y);
+    const cps = Array.from(line);
+    const yt = Math.max(0, Math.floor(y / ch) - 2), yb = Math.min(H, Math.ceil((y + size * 1.25) / ch) + 2);
+    let prev = Math.max(0, Math.floor(x0 / cw) - 3);
+    cps.forEach((c, i) => {
+      const nx = i === cps.length - 1 ? Math.min(W, Math.ceil((x0 + w) / cw) + 3) : Math.round((x0 + g.measureText(cps.slice(0, i + 1).join('')).width) / cw);
+      msgChars.push({ x0: prev, w: Math.max(0, nx - prev), y0: yt, h: yb - yt, sp: c === ' ' });
+      prev = nx;
+    });
+  };
+  lines.forEach((l, i) => put(l, top + i * lh, px, '#f8ead2'));
+  let bottom = top + lines.length * lh;
+  if (from) { put(from, bottom + px * 0.35, fromPx(px), '#ffb08f'); bottom += px * 0.35 + fromPx(px) * LH; }
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const img = g.getImageData(0, 0, W, H), d = img.data;   // no soft edges: a stitch is either there or it is not
+  for (let i = 3; i < d.length; i += 4) d[i] = d[i] > 110 ? 255 : 0;
+  g.putImageData(img, 0, 0);
+  msgStep = clamp(2.4 / Math.max(1, msgChars.length), 0.014, 0.07);
+
+  haloY = Math.max(0, Math.floor(top - 40 * dprUsed));                       // a soft glow behind the lettering
+  haloCv.width = devW; haloCv.height = Math.max(1, Math.min(devH - haloY, Math.ceil(bottom + 40 * dprUsed - haloY)));
+  const h = haloCv.getContext('2d'), off = devW + 80;
+  h.imageSmoothingEnabled = false;
+  h.shadowColor = 'rgba(255,190,160,0.95)'; h.shadowBlur = 22 * dprUsed; h.shadowOffsetX = off; h.shadowOffsetY = 0;
+  h.drawImage(msgCv, -off, -haloY, W * cw, H * ch);
+  msgReady = true;
+}
+function drawMessage(t) {                            // letters stitch themselves in one after another
+  if (!msgReady) return;
+  const tt = t - 4.6;
+  if (tt < 0) return;
+  sc.setTransform(1, 0, 0, 1, 0, 0);
+  if (reduce || tt >= msgChars.length * msgStep + 0.7) { sc.drawImage(msgCv, 0, 0); return; }
+  for (let k = 0; k < msgChars.length; k++) {
+    const c = msgChars[k];
+    if (c.sp || c.w <= 0) continue;
+    const a = clamp((tt - k * msgStep) / 0.5);
+    if (a <= 0) continue;
+    sc.globalAlpha = a;
+    sc.drawImage(msgCv, c.x0, c.y0, c.w, c.h, c.x0, c.y0 + Math.round((1 - a) * 3), c.w, c.h);
+  }
+  sc.globalAlpha = 1;
+}
+if (document.fonts && document.fonts.load) {
+  document.fonts.load('400 40px "Young Serif"').then(() => layoutText(), () => {});
+  if (document.fonts.ready) document.fonts.ready.then(() => layoutText());
+}
+
+/* ───────────── the questions ───────────── */
+const QS = CONFIG.questions || [];
+const NUDGE_LINES = ['Hmm, try again.', 'Are you sure?', 'Think about it.'];
+const DODGE_LINES = ['Too slow!', 'That one is shy.', 'Nope. Over here.'];
+let card = null, lastPos = null, phase = 'quiz';
+
+const insets = () => {
+  const cs = getComputedStyle(document.documentElement);
+  return { t: parseFloat(cs.paddingTop) || 0, b: parseFloat(cs.paddingBottom) || 0 };
+};
+
+function mkCard(q, i) {
+  const el = document.createElement('div');
+  el.className = 'card'; el.setAttribute('role', 'group'); el.tabIndex = -1;
+  el.setAttribute('aria-labelledby', 'q' + i);
+  el.innerHTML = '<div class="count"></div><p class="q" id="q' + i + '"></p><div class="opts"></div><p class="nudge" aria-live="polite"></p>';
+  el.querySelector('.count').textContent = (i + 1) + ' of ' + QS.length;
+  el.querySelector('.q').textContent = q.q;
+  const opts = el.querySelector('.opts');
+  const defs = q.options ? q.options.map((o, k) => ({ v: String(k), label: o.label })) : [{ v: 'yes', label: 'Yes' }, { v: 'no', label: 'No' }];
+  if (q.options) opts.classList.add('stack');
+  for (const d of defs) {
+    const lab = document.createElement('label');
+    lab.className = 'opt'; lab.dataset.v = d.v;
+    lab.innerHTML = '<input type="checkbox" value="' + d.v + '"><span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8l4.6 4.6L19.6 6.6"/></svg></span><span class="lbl"></span><span class="cnt" aria-hidden="true"></span>';
+    lab.querySelector('.lbl').textContent = d.label;
+    opts.appendChild(lab);
+  }
+  el._q = q; el._i = i; el._n = 0; el._locked = false;
+  if (q.must && q.dodge) {
+    const bad = opts.querySelector('[data-v="' + (q.must === 'yes' ? 'no' : 'yes') + '"]');
+    bad.classList.add('dodger');
+    bad.addEventListener('pointerdown', e => { if (el._locked) return; e.preventDefault(); dodge(bad, e.clientX, e.clientY); say(el, true); });
+    bad.addEventListener('click', e => {             // a pointer tap was already handled above; Space or Enter lands here
+      e.preventDefault();
+      if (e.detail === 0 && !el._locked) { dodge(bad); say(el, true); }
+    });
+  }
+  el.addEventListener('change', e => { if (e.target.matches('input') && !el._locked) answer(el, e.target); });
+  if (q.options) {                                   // custom boxes: some need many taps, some just disappear
+    el._taps = q.options.map(() => 0);
+    el.addEventListener('click', e => {
+      const inp = e.target;
+      if (!inp.matches || !inp.matches('input[type="checkbox"]')) return;
+      e.preventDefault();                            // these boxes never stay ticked; they count or vanish instead
+      const k = +inp.value, o = q.options[k], lab = inp.closest('.opt');
+      if (el._locked || lab.classList.contains('gone')) return;
+      if (o.vanish) { lab.classList.add('ticked'); setTimeout(() => lab.classList.add('gone'), 120); lab.setAttribute('aria-hidden', 'true'); return; }
+      const need = o.taps || 1, n = ++el._taps[k];
+      lab.classList.add('ticked'); setTimeout(() => lab.classList.remove('ticked'), 150);
+      lab.querySelector('.cnt').textContent = n + '/' + need;
+      const bx = inp.nextElementSibling.getBoundingClientRect();
+      if (n < need) { burst(bx.left + bx.width / 2, bx.top + bx.height / 2, 7); return; }
+      lab.classList.add('done');
+      pass(el, inp.nextElementSibling);
+    });
+  }
+  return el;
+}
+
+function place(el, i) {
+  const vw = window.innerWidth, vh = window.innerHeight, w = el.offsetWidth, h = el.offsetHeight, ins = insets();
+  const mx = 16, mt = ins.t + 28, mb = ins.b + 28;
+  let x, y;
+  if (CONFIG.placement !== 'random') {
+    x = (vw - w) / 2; y = ins.t + (vh - ins.t - ins.b - h) / 2;           // always in the middle of the screen
+  } else if (i === 0) {
+    x = (vw - w) / 2; y = vh - h - mb - Math.round(vh * 0.07);          // the first box sits at the bottom
+  } else {
+    let best = null, bd = -1;                                           // then they turn up anywhere, away from the last one
+    for (let k = 0; k < 30; k++) {
+      const cx = mx + Math.random() * Math.max(0, vw - w - 2 * mx), cy = mt + Math.random() * Math.max(0, vh - h - mt - mb);
+      const d = lastPos ? Math.hypot(cx - lastPos.x, cy - lastPos.y) : 999;
+      if (d > bd) { bd = d; best = { x: cx, y: cy }; if (d > Math.min(vw, vh) * 0.3) break; }
+    }
+    x = best.x; y = best.y;
+  }
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  lastPos = { x, y };
+}
+
+function showQuestion(i) {
+  const el = mkCard(QS[i], i);
+  quizEl.appendChild(el);
+  card = el;
+  place(el, i);
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.classList.add('in'); el.focus({ preventScroll: true }); }));
+}
+
+function say(el, dodging) {
+  const q = el._q;
+  const list = q.nudge && q.nudge.length ? q.nudge : (dodging ? DODGE_LINES : NUDGE_LINES);
+  const n = el.querySelector('.nudge');
+  n.textContent = list[el._n++ % list.length];
+  n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop');
+}
+
+function dodge(lab, px, py) {                        // the wrong answer jumps somewhere else on the screen
+  const r = lab.getBoundingClientRect();              // where it is right now
+  const box = lab.closest('.card');
+  const nx = (parseFloat(box.style.left) || 0) + box.clientLeft + lab.offsetLeft;     // where it sits with no jump applied
+  const ny = (parseFloat(box.style.top) || 0) + box.clientTop + lab.offsetTop;
+  const lw = lab.offsetWidth, lh = lab.offsetHeight;
+  const other = lab.parentElement.querySelector('.opt:not(.dodger)').getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight, ins = insets(), m = 16;
+  let best = null, bs = -1;
+  for (let k = 0; k < 30; k++) {
+    const x = m + Math.random() * Math.max(0, vw - lw - 2 * m);
+    const y = ins.t + m + Math.random() * Math.max(0, vh - lh - 2 * m - ins.t - ins.b);
+    if (!(x + lw < other.left - 24 || x > other.right + 24 || y + lh < other.top - 24 || y > other.bottom + 24)) continue;
+    const dCur = Math.hypot(x - r.left, y - r.top);
+    const dPtr = px === undefined ? 200 : Math.hypot(x + lw / 2 - px, y + lh / 2 - py);
+    const score = Math.min(dCur, 220) + Math.min(dPtr, 240);
+    if (score > bs) { bs = score; best = { x, y }; }
+  }
+  if (!best) best = { x: m, y: vh * 0.3 };
+  lab._dx = best.x - nx; lab._dy = best.y - ny;
+  lab.style.transform = 'translate(' + lab._dx + 'px,' + lab._dy + 'px) rotate(' + ((Math.random() - 0.5) * 14) + 'deg)';
+}
+
+function burst(cx, cy, n = 20) {
+  if (reduce) return;
+  const k = devW / window.innerWidth, g = gnow();
+  const R = mulberry((performance.now() | 0) % 100000);
+  for (let i = 0; i < n; i++) {
+    const a = R() * TAU, sp = (70 + R() * 270) * dprUsed;
+    sparks.push({ x: cx * k, y: cy * k, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 90 * dprUsed, t0: g, life: 0.8 + R() * 0.8, hue: 18 + R() * 40, r: (1.6 + R() * 2.4) * dprUsed });
+  }
+}
+
+function answer(el, input) {
+  const q = el._q, v = input.value;
+  el.querySelectorAll('input').forEach(x => { if (x !== input) x.checked = false; });
+  if (!input.checked) return;
+  const wrong = q.must && v !== q.must;
+  if (wrong && q.dodge) {                            // keyboard users end up here: the answer refuses to stay ticked
+    input.checked = false;
+    dodge(input.closest('.opt'));
+    say(el, true);
+    return;
+  }
+  if (wrong) {                                       // a nudge: tick it, shake the box, take the tick back
+    say(el, false);
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    setTimeout(() => { if (!el._locked) input.checked = false; }, 700);
+    return;
+  }
+  pass(el, input.nextElementSibling);
+}
+
+function pass(el, boxEl) {                          // right answer, or either is fine: on to the next one
+  el._locked = true;
+  el.querySelectorAll('input').forEach(x => { x.disabled = true; });
+  const b = boxEl.getBoundingClientRect();
+  burst(b.left + b.width / 2, b.top + b.height / 2);
+  const last = el._i >= QS.length - 1;
+  const reply = el._q.reply;
+  if (reply) {                                       // a little remark for the right answer, in the same spot as the nudges
+    const n = el.querySelector('.nudge');
+    n.textContent = reply;
+    n.classList.remove('pop'); void n.offsetWidth; n.classList.add('pop');
+  }
+  setTimeout(() => {
+    el.classList.remove('in'); el.classList.add('out');
+    setTimeout(() => el.remove(), 340);
+    if (!last) showQuestion(el._i + 1); else setTimeout(beginBloom, 450);
+  }, reply ? 1700 : 380);
+}
+
+window.addEventListener('pointermove', e => {         // with a mouse, the wrong answer slips away before you reach it
+  if (e.pointerType !== 'mouse' || !card || card._locked) return;
+  const d = card.querySelector('.dodger');
+  if (!d) return;
+  const r = d.getBoundingClientRect();
+  if (Math.hypot(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height / 2)) < 90 && performance.now() - (d._last || 0) > 240) {
+    d._last = performance.now();
+    dodge(d, e.clientX, e.clientY);
+  }
+});
+
+/* ───────────── the bouquet clock and the loop ───────────── */
+let t0 = 0, shown = false, skip = false;
+const clock = () => (performance.now() - t0) / 1000 * CONFIG.speed;
+function start() {                                   // (re)starts the bouquet animation
+  t0 = performance.now();
+  shown = false; kickT = -99;
+  replay.hidden = true;
+}
+function beginBloom() {
+  phase = 'bloom';
+  start();
+  greeting.hidden = false;                           // now the message is there for screen readers too
+  if (reduce) draw(END_T, gnow());
+}
+function tick() {
+  const g = gnow();
+  if (phase === 'quiz') {
+    compose(0, g, false);
+  } else {
+    const t = clock();
+    skip = !skip;
+    if (!(skip && t > END_T + 1)) draw(t, g);        // 30 fps once it has settled, to save battery
+    if (t > END_T && replay.hidden) replay.hidden = false;
+  }
+  requestAnimationFrame(tick);
+}
+replay.addEventListener('click', () => { start(); replay.blur(); });
+window.addEventListener('pointerdown', e => {         // tap the sky for a little shower of sparks
+  if (reduce || e.target.closest('button, .card')) return;
+  burst(e.clientX, e.clientY);
+  if (phase === 'bloom' && clock() > 1) kickT = clock();
+});
+window.addEventListener('resize', () => {
+  resize();
+  if (card && CONFIG.placement !== 'random') place(card, card._i);
+  else if (card) {
+    const w = card.offsetWidth, h = card.offsetHeight, ins = insets();
+    card.style.left = clamp(parseFloat(card.style.left) || 0, 16, Math.max(16, window.innerWidth - w - 16)) + 'px';
+    card.style.top = clamp(parseFloat(card.style.top) || 0, ins.t + 16, Math.max(ins.t + 16, window.innerHeight - h - ins.b - 16)) + 'px';
+  }
+  if (reduce) { if (phase === 'bloom') draw(END_T, gnow()); else compose(0, gnow(), false); }
+});
+
+build();
+resize();
+window.__bq = { draw, resize, END_T, backdrop: g => compose(0, g === undefined ? gnow() : g, false), begin: beginBloom };
+if (location.hash === '#play' || linkSkip || !QS.length) {         // open the page with #play at the end of the link to skip the questions
+  beginBloom();
+} else {
+  setTimeout(() => showQuestion(0), 700);
+}
+if (reduce) {
+  if (phase === 'quiz') compose(0, gnow(), false);
+} else if (!window.__bqManual) {
+  requestAnimationFrame(tick);
+}
+})();
+</script>
+</body>
+</html>
